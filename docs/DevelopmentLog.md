@@ -7,6 +7,7 @@
 - Applied the hardcoded shell length rule from `config.py`: shell length equals 4 × shell ID.
 - Added validation for invalid shell geometry, including non-positive inside diameter, non-positive thickness, and excessive thickness.
 - Added nozzle geometry using outside diameter, thickness, angle, centreline offset, outside projection, and inside projection inputs.
+- Updated the shell-nozzle boolean sequence to cut the shell with the nozzle outer profile using configurable boolean clearance before unioning the nozzle.
 - Exported `model.step` and `model.brep` to each timestamped output folder.
 - Added run logging for input validation, output folder creation, input copy, and CAD export steps.
 - Reinforcement pad geometry was not implemented in this milestone update.

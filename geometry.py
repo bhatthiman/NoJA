@@ -175,8 +175,9 @@ def build_nozzle(
     length: float,
     shell_inside_diameter: float,
     shell_thickness: float,
+    boolean_clearance: float = config.BOOLEAN_CLEARANCE,
 ) -> tuple[cq.Workplane, cq.Workplane]:
-    """Build hollow nozzle geometry and its bore cutter."""
+    """Build hollow nozzle geometry and its outer-profile shell cutter."""
     outside_diameter = _positive_float(str(outside_diameter), "Nozzle outside diameter")
     thickness = _positive_float(str(thickness), "Nozzle thickness")
     angle = _angle_float(str(angle), "Nozzle angle")
@@ -185,6 +186,7 @@ def build_nozzle(
     length = _positive_float(str(length), "Nozzle length")
     shell_inside_diameter = _positive_float(str(shell_inside_diameter), "Shell inside diameter")
     shell_thickness = _positive_float(str(shell_thickness), "Shell thickness")
+    boolean_clearance = _non_negative_float(str(boolean_clearance), "Boolean clearance")
 
     inside_diameter = outside_diameter - (2.0 * thickness)
     if inside_diameter <= 0.0:
@@ -197,12 +199,22 @@ def build_nozzle(
     shell_outer_point = cq.Vector(centreline_offset, 0.0, shell_outside_radius)
     center = shell_outer_point + (axis * ((outside_projection - inside_projection) / 2.0))
 
-    nozzle_outer = _cylinder(outside_diameter / 2.0, modeled_length, center, axis)
-    nozzle_inner = _cylinder(inside_diameter / 2.0, modeled_length * 1.1, center, axis)
+    outer_radius = outside_diameter / 2.0
+    inner_radius = inside_diameter / 2.0
+    nozzle_outer = _cylinder(outer_radius, modeled_length, center, axis)
+    nozzle_inner = _cylinder(inner_radius, modeled_length * 1.1, center, axis)
+    nozzle_outer_cutter = _cylinder(
+        outer_radius + boolean_clearance,
+        modeled_length * 1.1,
+        center,
+        axis,
+    )
     nozzle = nozzle_outer.cut(nozzle_inner)
     if not nozzle.val().isValid():
         raise ValueError("Generated nozzle geometry is invalid.")
-    return nozzle, nozzle_inner
+    if not nozzle_outer_cutter.val().isValid():
+        raise ValueError("Generated nozzle outer-profile cutter is invalid.")
+    return nozzle, nozzle_outer_cutter
 
 
 def build_model(job_path: Path = config.JOB_INPUT_FILE) -> cq.Workplane:
@@ -210,14 +222,23 @@ def build_model(job_path: Path = config.JOB_INPUT_FILE) -> cq.Workplane:
     shell_parameters = get_shell_parameters(job_path)
     nozzle_parameters = get_nozzle_parameters(job_path)
     shell = build_shell(**shell_parameters)
-    nozzle, nozzle_bore_cutter = build_nozzle(
+    nozzle, nozzle_outer_cutter = build_nozzle(
         **nozzle_parameters,
         shell_inside_diameter=shell_parameters["inside_diameter"],
         shell_thickness=shell_parameters["thickness"],
+        boolean_clearance=config.BOOLEAN_CLEARANCE,
     )
-    model = shell.cut(nozzle_bore_cutter).union(nozzle)
+
+    opened_shell = shell.cut(nozzle_outer_cutter)
+    if not opened_shell.val().isValid():
+        raise ValueError("Shell cut with nozzle outer profile produced invalid geometry.")
+
+    model = opened_shell.union(nozzle)
     if not model.val().isValid():
         raise ValueError("Generated shell-and-nozzle model is invalid.")
+    solid_count = len(model.solids().vals())
+    if solid_count != 1:
+        raise ValueError(f"Generated model must contain one solid; found {solid_count} solids.")
     return model
 
 
