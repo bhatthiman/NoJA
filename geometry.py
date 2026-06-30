@@ -1,6 +1,6 @@
 """CadQuery geometry generation for NoJA milestone 2a."""
 
-from math import cos, radians, sin
+from math import cos, radians, sin, sqrt
 from pathlib import Path
 
 import cadquery as cq
@@ -152,10 +152,19 @@ def build_shell(inside_diameter: float, thickness: float, length: float) -> cq.W
     return shell
 
 
-def _nozzle_axis(angle: float) -> cq.Vector:
-    """Return the nozzle axis vector in the shell XZ plane."""
+def _shell_surface_point(shell_radius: float, centreline_offset: float) -> cq.Vector:
+    """Return the shell outer-surface point for a Y-direction nozzle offset."""
+    if abs(centreline_offset) >= shell_radius:
+        raise ValueError("Nozzle centreline offset must be inside the shell outside radius.")
+    surface_z = sqrt((shell_radius * shell_radius) - (centreline_offset * centreline_offset))
+    return cq.Vector(0.0, centreline_offset, surface_z)
+
+
+def _nozzle_axis(angle: float, radial_direction: cq.Vector) -> cq.Vector:
+    """Return the nozzle axis in the shell-axis/radial plane at the offset point."""
     angle_radians = radians(angle)
-    return cq.Vector(cos(angle_radians), 0.0, sin(angle_radians)).normalized()
+    shell_axis = cq.Vector(1.0, 0.0, 0.0)
+    return ((shell_axis * cos(angle_radians)) + (radial_direction * sin(angle_radians))).normalized()
 
 
 def _cylinder(radius: float, length: float, center: cq.Vector, direction: cq.Vector) -> cq.Workplane:
@@ -175,6 +184,7 @@ def build_nozzle(
     length: float,
     shell_inside_diameter: float,
     shell_thickness: float,
+    shell_length: float,
     boolean_clearance: float = config.BOOLEAN_CLEARANCE,
 ) -> tuple[cq.Workplane, cq.Workplane]:
     """Build hollow nozzle geometry and its outer-profile shell cutter."""
@@ -186,17 +196,22 @@ def build_nozzle(
     length = _positive_float(str(length), "Nozzle length")
     shell_inside_diameter = _positive_float(str(shell_inside_diameter), "Shell inside diameter")
     shell_thickness = _positive_float(str(shell_thickness), "Shell thickness")
+    shell_length = _positive_float(str(shell_length), "Shell length")
     boolean_clearance = _non_negative_float(str(boolean_clearance), "Boolean clearance")
 
     inside_diameter = outside_diameter - (2.0 * thickness)
     if inside_diameter <= 0.0:
         raise ValueError("Nozzle thickness must be less than half of nozzle outside diameter.")
 
-    shell_outside_radius = (shell_inside_diameter / 2.0) + shell_thickness
+    shell_inside_radius = shell_inside_diameter / 2.0
+    if abs(centreline_offset) >= shell_inside_radius:
+        raise ValueError("Nozzle centreline offset must be inside the shell inside radius.")
+    shell_outside_radius = shell_inside_radius + shell_thickness
     minimum_intersection_length = outside_projection + shell_thickness + inside_projection
     modeled_length = max(length, minimum_intersection_length, outside_diameter)
-    axis = _nozzle_axis(angle)
-    shell_outer_point = cq.Vector(centreline_offset, 0.0, shell_outside_radius)
+    shell_outer_point = _shell_surface_point(shell_outside_radius, centreline_offset)
+    radial_direction = shell_outer_point.normalized()
+    axis = _nozzle_axis(angle, radial_direction)
     center = shell_outer_point + (axis * ((outside_projection - inside_projection) / 2.0))
 
     outer_radius = outside_diameter / 2.0
@@ -210,6 +225,14 @@ def build_nozzle(
         axis,
     )
     nozzle = nozzle_outer.cut(nozzle_inner)
+    if inside_projection == 0.0:
+        shell_inner_cutter = _cylinder(
+            shell_inside_radius,
+            shell_length * 1.1,
+            cq.Vector(0.0, 0.0, 0.0),
+            cq.Vector(1.0, 0.0, 0.0),
+        )
+        nozzle = nozzle.cut(shell_inner_cutter)
     if not nozzle.val().isValid():
         raise ValueError("Generated nozzle geometry is invalid.")
     if not nozzle_outer_cutter.val().isValid():
@@ -226,6 +249,7 @@ def build_model(job_path: Path = config.JOB_INPUT_FILE) -> cq.Workplane:
         **nozzle_parameters,
         shell_inside_diameter=shell_parameters["inside_diameter"],
         shell_thickness=shell_parameters["thickness"],
+        shell_length=shell_parameters["length"],
         boolean_clearance=config.BOOLEAN_CLEARANCE,
     )
 
