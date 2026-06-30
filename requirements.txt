@@ -1,0 +1,7 @@
+cadquery
+gmsh
+numpy
+scipy
+pandas
+python-docx
+matplotlib
