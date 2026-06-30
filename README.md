@@ -4,7 +4,7 @@ NoJA is an internal MechXcel Designs LLP engineering tool for shell-to-pipe nozz
 
 ## Milestone 2a Scope
 
-This branch contains the project skeleton plus shell-only geometry generation:
+This branch contains the project skeleton plus shell and nozzle geometry generation:
 
 - Python dependency list
 - Configuration constants
@@ -14,9 +14,10 @@ This branch contains the project skeleton plus shell-only geometry generation:
 - Output folder placeholder
 - Shell parameter reading from `input/Job.csv`
 - Hollow cylindrical shell generation with CadQuery
+- Hollow nozzle generation with angle, centreline offset, outside projection, and inside projection inputs
 - `model.step` and `model.brep` export into each run output folder
 
-Nozzle geometry, reinforcement pad geometry, meshing, solver execution, post-processing, stress classification, ASME checks, and report generation are intentionally not implemented in Milestone 2a.
+Reinforcement pad geometry, meshing, solver execution, post-processing, stress classification, ASME checks, and report generation are intentionally not implemented in Milestone 2a.
 
 ## Project Layout
 

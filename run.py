@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import config
-from geometry import export_shell_model
+from geometry import export_model
 from input import validate_inputs
 
 
@@ -32,9 +32,9 @@ def main() -> Path:
     LOGGER.info("Created output folder: %s", output_folder)
     shutil.copy2(config.JOB_INPUT_FILE, output_folder / config.JOB_INPUT_FILE.name)
     LOGGER.info("Copied Job.csv to output folder.")
-    exported_files = export_shell_model(output_folder)
-    LOGGER.info("Exported shell STEP model: %s", exported_files["step"])
-    LOGGER.info("Exported shell BREP model: %s", exported_files["brep"])
+    exported_files = export_model(output_folder)
+    LOGGER.info("Exported STEP model: %s", exported_files["step"])
+    LOGGER.info("Exported BREP model: %s", exported_files["brep"])
     return output_folder
 
 
