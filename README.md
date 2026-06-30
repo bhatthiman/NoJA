@@ -2,9 +2,9 @@
 
 NoJA is an internal MechXcel Designs LLP engineering tool for shell-to-pipe nozzle junction finite element evaluation in accordance with ASME Section VIII Division 2 Part 5 elastic stress analysis.
 
-## Milestone 1 Scope
+## Milestone 2a Scope
 
-This branch contains only the project skeleton:
+This branch contains the project skeleton plus shell-only geometry generation:
 
 - Python dependency list
 - Configuration constants
@@ -12,8 +12,11 @@ This branch contains only the project skeleton:
 - Starter `Job.csv` input file
 - Starter `materials.csv` input file
 - Output folder placeholder
+- Shell parameter reading from `input/Job.csv`
+- Hollow cylindrical shell generation with CadQuery
+- `model.step` and `model.brep` export into each run output folder
 
-Geometry generation, meshing, solver execution, post-processing, stress classification, ASME checks, and report generation are intentionally not implemented in Milestone 1.
+Nozzle geometry, reinforcement pad geometry, meshing, solver execution, post-processing, stress classification, ASME checks, and report generation are intentionally not implemented in Milestone 2a.
 
 ## Project Layout
 
@@ -23,6 +26,7 @@ materials/materials.csv
 outputs/.gitkeep
 config.py
 input.py
+geometry.py
 run.py
 requirements.txt
 README.md
@@ -37,4 +41,4 @@ Install dependencies in a Python 3.11+ environment, then run:
 python run.py
 ```
 
-The command validates the CSV input files and creates a timestamped folder under `outputs/` containing a copy of `Job.csv`.
+The command validates the CSV input files and creates a timestamped folder under `outputs/` containing a copy of `Job.csv`, `model.step`, and `model.brep`.

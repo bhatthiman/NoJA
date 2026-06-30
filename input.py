@@ -41,6 +41,21 @@ def _validate_columns(actual_columns: list[str], required_columns: tuple[str, ..
         raise ValueError(f"{file_label} is missing required columns: {', '.join(missing_columns)}")
 
 
+def read_job_parameters(path: Path = config.JOB_INPUT_FILE) -> dict[str, dict[str, str]]:
+    """Read Job.csv into a nested dictionary keyed by section and parameter."""
+    rows = _read_csv_rows(path)
+    _validate_columns(list(rows[0].keys()), REQUIRED_JOB_COLUMNS, "Job CSV")
+    parameters: dict[str, dict[str, str]] = {}
+    for row in rows:
+        section = row.get("Section", "").strip()
+        parameter = row.get("Parameter", "").strip()
+        value = row.get("Value", "").strip()
+        if not section or not parameter:
+            raise ValueError("Job CSV contains a row with an empty Section or Parameter.")
+        parameters.setdefault(section, {})[parameter] = value
+    return parameters
+
+
 def validate_job_file(path: Path = config.JOB_INPUT_FILE) -> None:
     """Validate that the job CSV contains required milestone 1 sections and columns."""
     rows = _read_csv_rows(path)

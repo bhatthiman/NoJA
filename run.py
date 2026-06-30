@@ -1,11 +1,17 @@
-"""Milestone 1 command-line entry point for the NoJA project skeleton."""
+"""Command-line entry point for NoJA milestone runs."""
 
+import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
 
 import config
+from geometry import export_shell_model
 from input import validate_inputs
+
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+LOGGER = logging.getLogger(__name__)
 
 
 def create_output_folder(timestamp: datetime | None = None) -> Path:
@@ -19,11 +25,16 @@ def create_output_folder(timestamp: datetime | None = None) -> Path:
 
 
 def main() -> Path:
-    """Validate milestone 1 inputs and prepare the run output folder."""
+    """Validate inputs, prepare the output folder, and export shell geometry."""
+    LOGGER.info("Validating input files.")
     validate_inputs()
     output_folder = create_output_folder()
+    LOGGER.info("Created output folder: %s", output_folder)
     shutil.copy2(config.JOB_INPUT_FILE, output_folder / config.JOB_INPUT_FILE.name)
-    print(f"NoJA milestone 1 input validation complete: {output_folder}")
+    LOGGER.info("Copied Job.csv to output folder.")
+    exported_files = export_shell_model(output_folder)
+    LOGGER.info("Exported shell STEP model: %s", exported_files["step"])
+    LOGGER.info("Exported shell BREP model: %s", exported_files["brep"])
     return output_folder
 
 
