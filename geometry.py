@@ -160,11 +160,10 @@ def _shell_surface_point(shell_radius: float, centreline_offset: float) -> cq.Ve
     return cq.Vector(0.0, centreline_offset, surface_z)
 
 
-def _nozzle_axis(angle: float, radial_direction: cq.Vector) -> cq.Vector:
-    """Return the nozzle axis in the shell-axis/radial plane at the offset point."""
+def _nozzle_axis(angle: float) -> cq.Vector:
+    """Return the nozzle axis in the XZ plane so Y offset does not angle the nozzle."""
     angle_radians = radians(angle)
-    shell_axis = cq.Vector(1.0, 0.0, 0.0)
-    return ((shell_axis * cos(angle_radians)) + (radial_direction * sin(angle_radians))).normalized()
+    return cq.Vector(cos(angle_radians), 0.0, sin(angle_radians)).normalized()
 
 
 def _cylinder(radius: float, length: float, center: cq.Vector, direction: cq.Vector) -> cq.Workplane:
@@ -207,12 +206,16 @@ def build_nozzle(
     if abs(centreline_offset) >= shell_inside_radius:
         raise ValueError("Nozzle centreline offset must be inside the shell inside radius.")
     shell_outside_radius = shell_inside_radius + shell_thickness
-    minimum_intersection_length = outside_projection + shell_thickness + inside_projection
+    fish_mouth_trim = inside_projection == 0.0
+    inward_projection = inside_projection
+    if fish_mouth_trim:
+        inward_projection = shell_inside_diameter + outside_diameter
+    minimum_intersection_length = outside_projection + shell_thickness + inward_projection
     modeled_length = max(length, minimum_intersection_length, outside_diameter)
+    inward_modeled_length = modeled_length - outside_projection
     shell_outer_point = _shell_surface_point(shell_outside_radius, centreline_offset)
-    radial_direction = shell_outer_point.normalized()
-    axis = _nozzle_axis(angle, radial_direction)
-    center = shell_outer_point + (axis * ((outside_projection - inside_projection) / 2.0))
+    axis = _nozzle_axis(angle)
+    center = shell_outer_point + (axis * ((outside_projection - inward_modeled_length) / 2.0))
 
     outer_radius = outside_diameter / 2.0
     inner_radius = inside_diameter / 2.0
@@ -225,7 +228,7 @@ def build_nozzle(
         axis,
     )
     nozzle = nozzle_outer.cut(nozzle_inner)
-    if inside_projection == 0.0:
+    if fish_mouth_trim:
         shell_inner_cutter = _cylinder(
             shell_inside_radius,
             shell_length * 1.1,
