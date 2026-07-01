@@ -22,6 +22,7 @@ MODEL_STEP_FILE = "model.step"
 MODEL_BREP_FILE = "model.brep"
 MINIMUM_ANGLE_DEGREES = 0.0
 MAXIMUM_ANGLE_DEGREES = 180.0
+MINIMUM_NOZZLE_RADIAL_COMPONENT = 0.05
 
 
 def _positive_float(value: str, label: str) -> float:
@@ -209,7 +210,8 @@ def build_nozzle(
     fish_mouth_trim = inside_projection == 0.0
     inward_projection = inside_projection
     if fish_mouth_trim:
-        inward_projection = shell_inside_diameter + outside_diameter
+        radial_component = max(abs(sin(radians(angle))), MINIMUM_NOZZLE_RADIAL_COMPONENT)
+        inward_projection = (shell_thickness / radial_component) + outside_diameter
     minimum_intersection_length = outside_projection + shell_thickness + inward_projection
     modeled_length = max(length, minimum_intersection_length, outside_diameter)
     inward_modeled_length = modeled_length - outside_projection
