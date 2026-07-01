@@ -14,7 +14,7 @@ This branch contains the project skeleton plus shell and nozzle geometry generat
 - Output folder placeholder
 - Shell parameter reading from `input/Job.csv`
 - Hollow cylindrical shell generation with CadQuery
-- Hollow nozzle generation with angle, Y-direction centreline offset, outside projection, and inside projection inputs
+- Hollow nozzle generation with angle, Y-direction centreline offset translation, outside projection, and inside projection inputs
 - Shell opening cut with the nozzle outer profile using configurable boolean clearance before nozzle union
 - Fish-mouth trimming for zero inside projection so the nozzle terminates flush with the shell ID
 - `model.step` and `model.brep` export into each run output folder
