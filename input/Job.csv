@@ -6,9 +6,9 @@ Nozzle,Outside Diameter,300,mm
 Nozzle,Thickness,12,mm
 Nozzle,Material Name,SA-106 Gr B,
 Nozzle,Angle,90,degrees
-Nozzle,Centreline Offset,100,mm
+Nozzle,Centreline Offset,250,mm
 Nozzle,Outside Projection,250,mm
-Nozzle,Inside Projection,0,mm
+Nozzle,Inside Projection,50,mm
 Reinforcement Pad,Enabled,No,
 Reinforcement Pad,Outside Diameter,450,mm
 Reinforcement Pad,Thickness,10,mm
