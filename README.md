@@ -2,24 +2,26 @@
 
 NoJA is an internal MechXcel Designs LLP engineering tool for shell-to-pipe nozzle junction finite element evaluation in accordance with ASME Section VIII Division 2 Part 5 elastic stress analysis.
 
-## Milestone 2a Scope
+## status: Shell to nozzle geometry is working. next add RF pad at user's option
 
-This branch contains the project skeleton plus shell and nozzle geometry generation:
-
-- Python dependency list
-- Configuration constants
-- CSV input validation entry point
-- Starter `Job.csv` input file
-- Starter `materials.csv` input file
-- Output folder placeholder
-- Shell parameter reading from `input/Job.csv`
-- Hollow cylindrical shell generation with CadQuery
-- Hollow nozzle generation with angle, Y-direction centreline offset translation, outside projection, and inside projection inputs
-- Shell opening cut with the nozzle outer profile using configurable boolean clearance before nozzle union
-- Fish-mouth trimming for zero inside projection so the nozzle terminates flush with the shell ID
-- `model.step` and `model.brep` export into each run output folder
-
-Reinforcement pad geometry, meshing, solver execution, post-processing, stress classification, ASME checks, and report generation are intentionally not implemented in Milestone 2a.
+## input from file Job.csv shall be as below:
+Section,Parameter,Value,Unit
+Shell,Inside Diameter,1000,mm
+Shell,Thickness,20,mm
+Shell,Material Name,SA-516 Gr 70,
+Nozzle,Outside Diameter,300,mm
+Nozzle,Thickness,12,mm
+Nozzle,Material Name,SA-106 Gr B,
+Nozzle,Angle,80,degrees
+Nozzle,Centreline Offset,300,mm
+Nozzle,Outside Projection,250,mm
+Nozzle,Inside Projection,0,mm
+Reinforcement Pad,Enabled,No,
+Reinforcement Pad,Outside Diameter,450,mm
+Reinforcement Pad,Thickness,10,mm
+Reinforcement Pad,Material,SA-516 Gr 70,
+Loads,Load Case,Internal Pressure MPa,Fx N,Fy N,Fz N,Mx N-mm,My N-mm,Mz N-mm
+Loads,LC1,1.0,0,0,0,0,0,0
 
 ## Project Layout
 
