@@ -11,6 +11,7 @@ from input import read_job_parameters
 
 SHELL_SECTION = "Shell"
 NOZZLE_SECTION = "Nozzle"
+REINFORCEMENT_PAD_SECTION = "Reinforcement Pad"
 INSIDE_DIAMETER_PARAMETER = "Inside Diameter"
 THICKNESS_PARAMETER = "Thickness"
 OUTSIDE_DIAMETER_PARAMETER = "Outside Diameter"
@@ -18,6 +19,7 @@ ANGLE_PARAMETER = "Angle"
 CENTRELINE_OFFSET_PARAMETER = "Centreline Offset"
 OUTSIDE_PROJECTION_PARAMETER = "Outside Projection"
 INSIDE_PROJECTION_PARAMETER = "Inside Projection"
+PAD_WIDTH_PARAMETER = "Pad Width"
 MODEL_STEP_FILE = "model.step"
 MODEL_BREP_FILE = "model.brep"
 MINIMUM_ANGLE_DEGREES = 0.0
@@ -128,6 +130,22 @@ def get_nozzle_parameters(job_path: Path = config.JOB_INPUT_FILE) -> dict[str, f
         "outside_projection": outside_projection,
         "inside_projection": inside_projection,
         "length": config.NOZZLE_LENGTH_OD_MULTIPLIER * outside_diameter,
+    }
+
+
+def get_reinforcement_pad_parameters(job_path: Path = config.JOB_INPUT_FILE) -> dict[str, float]:
+    """Read and validate RF pad width and thickness."""
+    job_parameters = read_job_parameters(job_path)
+    pad_parameters = _section_parameters(job_parameters, REINFORCEMENT_PAD_SECTION)
+    try:
+        pad_width = _positive_float(pad_parameters[PAD_WIDTH_PARAMETER], "RF pad width")
+        pad_thickness = _positive_float(pad_parameters[THICKNESS_PARAMETER], "RF pad thickness")
+    except KeyError as exc:
+        raise ValueError(f"Job CSV is missing required RF pad parameter: {exc.args[0]}") from exc
+
+    return {
+        "pad_width": pad_width,
+        "pad_thickness": pad_thickness,
     }
 
 
@@ -245,10 +263,84 @@ def build_nozzle(
     return nozzle, nozzle_outer_cutter
 
 
+def build_rf_pad(
+    shell: cq.Workplane,
+    nozzle_outside_diameter: float,
+    shell_thickness: float,
+    shell_inside_diameter: float,
+    angle: float,
+    centreline_offset: float,
+    outside_projection: float,
+    width: float,
+    pad_thickness: float,
+) -> cq.Workplane:
+    """Build RF pad at shell-nozzle junction with perfect surface attachment.
+    
+    RF pad ID = nozzle OD, RF pad OD = nozzle OD + 2*width.
+    Creates footprint by intersecting ring with shell, then extrudes by pad_thickness.
+    """
+    nozzle_outside_diameter = _positive_float(
+        str(nozzle_outside_diameter), "Nozzle outside diameter for RF pad"
+    )
+    width = _positive_float(str(width), "RF pad width")
+    pad_thickness = _positive_float(str(pad_thickness), "RF pad thickness")
+    angle = _angle_float(str(angle), "Nozzle angle for RF pad")
+    shell_inside_diameter = _positive_float(str(shell_inside_diameter), "Shell inside diameter")
+    shell_thickness = _positive_float(str(shell_thickness), "Shell thickness")
+
+    shell_outside_radius = (shell_inside_diameter / 2.0) + shell_thickness
+
+    shell_outer_point = _shell_surface_point(
+        shell_outside_radius,
+        centreline_offset,
+    )
+
+    axis = _nozzle_axis(angle)
+
+    center = shell_outer_point + axis * (outside_projection / 2.0)
+
+    outer_radius = (nozzle_outside_diameter / 2.0) + width
+    inner_radius = nozzle_outside_diameter / 2.0
+
+    pad_length = (2.0 * outer_radius) + shell_thickness + pad_thickness
+
+    outer = _cylinder(
+        outer_radius,
+        pad_length,
+        center,
+        axis,
+    )
+
+    inner = _cylinder(
+        inner_radius,
+        pad_length * 1.05,
+        center,
+        axis,
+    )
+
+    ring = outer.cut(inner)
+
+    footprint = ring.intersect(shell)
+
+    pad = (
+        footprint
+        .faces(">Z")
+        .workplane()
+        .offset2D(0.0)
+        .extrude(pad_thickness)
+    )
+
+    if not pad.val().isValid():
+        raise ValueError("Generated RF pad geometry is invalid.")
+    return pad
+
+
 def build_model(job_path: Path = config.JOB_INPUT_FILE) -> cq.Workplane:
-    """Build the shell and nozzle as one fused hollow solid body."""
+    """Build the shell, nozzle, and RF pad as one fused hollow solid body."""
     shell_parameters = get_shell_parameters(job_path)
     nozzle_parameters = get_nozzle_parameters(job_path)
+    pad_parameters = get_reinforcement_pad_parameters(job_path)
+
     shell = build_shell(**shell_parameters)
     nozzle, nozzle_outer_cutter = build_nozzle(
         **nozzle_parameters,
@@ -265,6 +357,25 @@ def build_model(job_path: Path = config.JOB_INPUT_FILE) -> cq.Workplane:
     model = opened_shell.union(nozzle)
     if not model.val().isValid():
         raise ValueError("Generated shell-and-nozzle model is invalid.")
+
+    # Build RF pad at shell-nozzle junction
+    rf_pad = build_rf_pad(
+        shell=shell,
+        nozzle_outside_diameter=nozzle_parameters["outside_diameter"],
+        shell_thickness=shell_parameters["thickness"],
+        shell_inside_diameter=shell_parameters["inside_diameter"],
+        angle=nozzle_parameters["angle"],
+        centreline_offset=nozzle_parameters["centreline_offset"],
+        outside_projection=nozzle_parameters["outside_projection"],
+        width=pad_parameters["pad_width"],
+        pad_thickness=pad_parameters["pad_thickness"],
+    )
+
+    # Union RF pad with model
+    model = model.union(rf_pad)
+    if not model.val().isValid():
+        raise ValueError("Generated model with RF pad is invalid.")
+
     solid_count = len(model.solids().vals())
     if solid_count != 1:
         raise ValueError(f"Generated model must contain one solid; found {solid_count} solids.")
