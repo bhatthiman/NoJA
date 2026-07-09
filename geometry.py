@@ -332,24 +332,23 @@ def build_rf_pad(
     )
 
     # -----------------------------
-    # Curved footprint
-    # -----------------------------
-
-    footprint = outer_pad.intersect(shell)
-
-    # -----------------------------
-    # Opening for nozzle
-    # -----------------------------
-
-    footprint = footprint.cut(nozzle_cutter)
-
+    shell_outer = _cylinder(
+        shell_inside_diameter / 2.0 + shell_thickness,
+        shell_inside_diameter * 4.0,
+        cq.Vector(0.0, 0.0, 0.0),
+        cq.Vector(1.0, 0.0, 0.0),
+    )
+    footprint_shape = outer_pad.val().intersect(shell_outer.val())
+    footprint = cq.Workplane(obj=footprint_shape)
+    opening_shape = footprint.val().cut(nozzle_cutter.val())
+    footprint = cq.Workplane(obj=opening_shape)
+    
     # -----------------------------
     # Thicken outward
     # -----------------------------
 
-    pad = cq.Workplane(
-        obj=footprint.val().offset(pad_thickness)
-    )
+    pad_shape = footprint.val().offset(pad_thickness)
+    pad = cq.Workplane(obj=pad_shape)
 
     if not pad.val().isValid():
         raise ValueError("Generated RF pad is invalid.")
