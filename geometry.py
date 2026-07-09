@@ -274,10 +274,11 @@ def build_rf_pad(
     width: float,
     pad_thickness: float,
 ) -> cq.Workplane:
-    """Build RF pad at shell-nozzle junction with perfect surface attachment.
+    """Build RF pad at shell-nozzle junction.
     
-    RF pad ID = nozzle OD, RF pad OD = nozzle OD + 2*width.
-    Creates footprint by intersecting ring with shell, then extrudes by pad_thickness.
+    RF pad inner diameter = nozzle OD
+    RF pad outer diameter = nozzle OD + 2*width
+    Creates an annular (ring-shaped) pad positioned at the nozzle junction.
     """
     nozzle_outside_diameter = _positive_float(
         str(nozzle_outside_diameter), "Nozzle outside diameter for RF pad"
@@ -299,36 +300,28 @@ def build_rf_pad(
 
     center = shell_outer_point + axis * (outside_projection / 2.0)
 
-    outer_radius = (nozzle_outside_diameter / 2.0) + width
     inner_radius = nozzle_outside_diameter / 2.0
+    outer_radius = inner_radius + width
 
-    pad_length = (2.0 * outer_radius) + shell_thickness + pad_thickness
-
+    # Create annular pad by extruding two coaxial cylinders along the nozzle axis
+    # Outer cylinder
     outer = _cylinder(
         outer_radius,
-        pad_length,
+        pad_thickness,
         center,
         axis,
     )
 
+    # Inner cylinder (to cut the hole)
     inner = _cylinder(
         inner_radius,
-        pad_length * 1.05,
+        pad_thickness * 1.1,
         center,
         axis,
     )
 
-    ring = outer.cut(inner)
-
-    footprint = ring.intersect(shell)
-
-    pad = (
-        footprint
-        .faces(">Z")
-        .workplane()
-        .offset2D(0.0)
-        .extrude(pad_thickness)
-    )
+    # Create annular pad by cutting inner from outer
+    pad = outer.cut(inner)
 
     if not pad.val().isValid():
         raise ValueError("Generated RF pad geometry is invalid.")
