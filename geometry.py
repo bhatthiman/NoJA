@@ -290,6 +290,7 @@ def build_rf_pad(
     shell_thickness = _positive_float(str(shell_thickness), "Shell thickness")
 
     shell_outside_radius = (shell_inside_diameter / 2.0) + shell_thickness
+    pad_intex = (shell_inside_diameter / 2.0)
 
     shell_outer_point = _shell_surface_point(
         shell_outside_radius,
@@ -307,7 +308,7 @@ def build_rf_pad(
     # Outer cylinder
     outer = _cylinder(
         outer_radius,
-        pad_thickness,
+        pad_intex,
         center,
         axis,
     )
