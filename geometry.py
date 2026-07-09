@@ -316,7 +316,7 @@ def build_rf_pad(
     # Inner cylinder (to cut the hole)
     inner = _cylinder(
         inner_radius,
-        pdf_intex * 1.1,
+        pad_intex * 1.1,
         center,
         axis,
     )
