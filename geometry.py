@@ -264,7 +264,6 @@ def build_nozzle(
 
 
 def build_rf_pad(
-    shell: cq.Workplane,
     nozzle_outside_diameter: float,
     shell_inside_diameter: float,
     shell_thickness: float,
@@ -275,19 +274,14 @@ def build_rf_pad(
     pad_thickness: float,
 ) -> cq.Workplane:
     """
-    Build reinforcement pad.
-
-    Sequence:
-        1. Outer cylinder (coaxial with nozzle)
-        2. Intersect with shell
-        3. Remove nozzle opening
-        4. Thicken outward
+    Build reinforcement pad as a solid body.
     """
 
-    shell_outside_radius = shell_inside_diameter / 2.0 + shell_thickness
+    shell_od = shell_inside_diameter + 2.0 * shell_thickness
+    shell_or = shell_od / 2.0
 
     shell_outer_point = _shell_surface_point(
-        shell_outside_radius,
+        shell_or,
         centreline_offset,
     )
 
@@ -303,52 +297,48 @@ def build_rf_pad(
         + 2.0 * outer_radius
     )
 
-    inward_length = pad_length - outside_projection
+    inward = pad_length - outside_projection
 
     center = shell_outer_point + (
-        axis * ((outside_projection - inward_length) / 2.0)
+        axis * ((outside_projection - inward) / 2.0)
     )
 
-    # -----------------------------
-    # Outer pad cylinder
-    # -----------------------------
+    # --------------------------
+    # Outer RF cylinder
+    # --------------------------
 
-    outer_pad = _cylinder(
+    outer = _cylinder(
         outer_radius,
         pad_length,
         center,
         axis,
     )
 
-    # -----------------------------
-    # Nozzle cutter
-    # -----------------------------
+    # --------------------------
+    # Inner RF cylinder
+    # --------------------------
 
-    nozzle_cutter = _cylinder(
+    inner = _cylinder(
         inner_radius,
-        pad_length * 1.05,
+        pad_length * 1.10,
         center,
         axis,
     )
 
-    # -----------------------------
+    pad = outer.cut(inner)
+
+    # --------------------------
+    # Trim with shell OD
+    # --------------------------
+
     shell_outer = _cylinder(
-        shell_inside_diameter / 2.0 + shell_thickness,
+        shell_or,
         shell_inside_diameter * 4.0,
         cq.Vector(0.0, 0.0, 0.0),
         cq.Vector(1.0, 0.0, 0.0),
     )
-    footprint_shape = outer_pad.val().intersect(shell_outer.val())
-    footprint = cq.Workplane(obj=footprint_shape)
-    opening_shape = footprint.val().cut(nozzle_cutter.val())
-    footprint = cq.Workplane(obj=opening_shape)
-    
-    # -----------------------------
-    # Thicken outward
-    # -----------------------------
 
-    pad_shape = footprint.val().offset(pad_thickness)
-    pad = cq.Workplane(obj=pad_shape)
+    pad = pad.intersect(shell_outer)
 
     if not pad.val().isValid():
         raise ValueError("Generated RF pad is invalid.")
